@@ -21,3 +21,5 @@ RUN Rscript -e "cmdstanr::install_cmdstan(cores = 2)"
 
 # Default working directory
 WORKDIR /workspace
+
+COPY . .
