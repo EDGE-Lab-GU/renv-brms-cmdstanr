@@ -1,0 +1,44 @@
+# R history and session files
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# R environment variables
+.Renviron
+
+# renv cache & library (these are rebuilt via renv::restore())
+renv/library/
+renv/staging/
+renv/cache/
+
+# RStudio server project/session files
+.rstudio/
+
+# Temporary build artifacts
+*.o
+*.so
+*.dll
+*.log
+*.tmp
+*.rds
+*.RDataTmp
+.Rapp.history
+
+# CmdStan binaries and build artifacts
+cmdstan-*
+*.exe
+
+# VS Code devcontainer artifacts
+.devcontainer/.cache/
+.vscode-server/
+.vscode/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Node/Yarn/NPM caches (if mixing with JS tooling)
+node_modules/
+npm-debug.log
+yarn-error.log
