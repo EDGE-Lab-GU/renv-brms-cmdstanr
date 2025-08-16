@@ -17,7 +17,11 @@ RUN Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
 RUN Rscript -e "install.packages('cmdstanr', repos=c('https://mc-stan.org/r-packages/', getOption('repos')))"
 
 # Pre-install CmdStan to avoid compilation delays
-RUN Rscript -e "cmdstanr::install_cmdstan(cores = 2)"
+RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/tmp', cores = 2, overwrite = TRUE)" && mv /tmp/cmdstan-* /opt/cmdstan
+
+# Set the CMDSTAN environment variable so cmdstanr can find the installation.
+# This avoids having to run set_cmdstan_path() in every R session.
+ENV CMDSTAN /opt/cmdstan
 
 # Default working directory
 WORKDIR /home/rstudio/project
