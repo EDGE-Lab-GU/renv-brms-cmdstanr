@@ -1,41 +1,45 @@
-FROM rocker/rstudio:4.3.1
-# Install system dependencies for your R packages
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    sudo git curl wget build-essential \
-    libssl-dev libcurl4-openssl-dev libxml2-dev \
-    libgit2-dev libharfbuzz-dev libfribidi-dev \
-    libfontconfig1-dev libfreetype6-dev \
-    libpng-dev libtiff5-dev libjpeg-dev \
-    libx11-dev pandoc \
-    cmake make g++ \
-    && rm -rf /var/lib/apt/lists/*
+# Use R 4.4 on Ubuntu 22.04 (Jammy)
+FROM rocker/rstudio:4.4.1
 
-# Install renv globally so it's available before restore
-RUN Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
-# Install cmdstanr from Stan repo
-RUN Rscript -e "install.packages('cmdstanr', repos=c('https://mc-stan.org/r-packages/', getOption('repos')))"
+# Fast binary CRAN mirror
+ENV RSPM=https://packagemanager.posit.co/cran/__linux__/jammy/latest
 
-# Pre-install CmdStan to avoid compilation delays
-RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/tmp', cores = 2, overwrite = TRUE)" && mv /tmp/cmdstan-* /opt/cmdstan
+# System deps (C/C++, Fortran, SSL, XML, Git, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gfortran make cmake \
+    libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
+    libjpeg-dev libpng-dev libtiff5-dev libfreetype6-dev libfontconfig1-dev \
+    ca-certificates wget unzip \
+ && rm -rf /var/lib/apt/lists/*
 
-# Set the CMDSTAN environment variable so cmdstanr can find the installation.
-# This avoids having to run set_cmdstan_path() in every R session.
-ENV CMDSTAN /opt/cmdstan
+# Speed knobs + no vignettes/manuals anywhere
+ENV MAKEFLAGS="-j4"
+RUN echo 'options(Ncpus = max(1L, parallel::detectCores()));' >> /usr/local/lib/R/etc/Rprofile.site
+ENV R_INSTALL_OPTS="--no-build-vignettes --no-manual"
+ENV R_REMOTES_NO_ERRORS_FROM_WARNINGS=true
+ENV RENV_CONFIG_SANDBOX_ENABLED=FALSE
 
-# Default working directory
+# Pre-install renv and cmdstanr from binaries where possible
+RUN R -q -e "install.packages(c('renv','cmdstanr'), repos=Sys.getenv('RSPM'))"
+
+# Install cmdstan once at build time (cached in image)
+# If this is still heavy on your network, comment this block and build in CI instead.
+RUN R -q -e "cmdstanr::install_cmdstan(dir='/opt/cmdstan', cores = parallel::detectCores(), quiet=TRUE)"
+ENV CMDSTAN=/opt/cmdstan
+
+# Cache for renv to make layer reusable
+ENV RENV_PATHS_CACHE=/opt/renv/cache
+RUN mkdir -p /opt/renv/cache && chown -R rstudio:rstudio /opt/renv
+
+# Copy project and restore packages according to renv.lock
 WORKDIR /home/rstudio/project
-
-# Copy renv lockfile to restore packages.
-# This leverages Docker's layer caching, so packages are not reinstalled
-# on every build unless renv.lock changes.
-COPY renv.lock .
-
-# Restore the R environment
-RUN Rscript -e "renv::restore()"
-
-# Copy the rest of your project files
 COPY . .
+# Respect global install opts and repos, restore without prompts
+RUN R -q -e "Sys.setenv(RSPM=Sys.getenv('RSPM')); options(repos=c(CRAN=Sys.getenv('RSPM')));" \
+         -e "renv::restore(clean=TRUE, prompt=FALSE)"
+
+# RStudio listens on 8787; Railway will proxy
+EXPOSE 8787
 
 # Change ownership to the rstudio user
 RUN chown -R rstudio:rstudio /home/rstudio/project
