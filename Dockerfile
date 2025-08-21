@@ -12,6 +12,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates wget unzip \
  && rm -rf /var/lib/apt/lists/*
 
+ # --- Preinstall heavy CRAN packages from Ubuntu CRAN PPAs (avoids compile timeouts) ---
+RUN add-apt-repository -y ppa:marutter/rrutter4.0 \
+ && add-apt-repository -y ppa:c2d4u.team/c2d4u4.0+ \
+ && apt-get update && apt-get install -y --no-install-recommends \
+    r-cran-rlang r-cran-vctrs r-cran-cli r-cran-glue r-cran-cpp11 \
+    r-cran-colorspace r-cran-isoband r-cran-farver r-cran-gtable \
+ && rm -rf /var/lib/apt/lists/*
+
 # Use stan-dev R-universe and INSTALL cmdstanr + renv
 RUN R -q -e "options(repos = c(stan='https://stan-dev.r-universe.dev', CRAN=Sys.getenv('RSPM')));" \
          -e "install.packages(c('cmdstanr','renv'))"
@@ -35,7 +43,7 @@ RUN R -q -e "options(repos=c(CRAN=Sys.getenv('RSPM')), pkgType='binary'); \
              install.packages(c('rlang','vctrs','cli','glue','cpp11','colorspace','isoband','farver','gtable'))"
 
 
-# So if any package (rlang) falls back to source, it won't die on -Werror=format-security
+# --- Safety: stop format-security warnings killing rlang builds if a source fallback happens ---
 RUN sed -i 's/-Werror=format-security/-Wno-error=format-security/g' /usr/local/lib/R/etc/Makeconf \
  && printf 'CFLAGS += -Wno-error=format-security\nCXXFLAGS += -Wno-error=format-security\n' \
     > /usr/local/lib/R/etc/Makevars.site
