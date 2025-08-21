@@ -17,8 +17,11 @@ RUN R -q -e "options(repos = c(stan='https://stan-dev.r-universe.dev', CRAN=Sys.
          -e "install.packages(c('cmdstanr','renv'))"
 
 # Install CmdStan once into the image
-RUN R -q -e "cmdstanr::install_cmdstan(dir='/opt/cmdstan', cores = parallel::detectCores(), quiet=TRUE)"
-ENV CMDSTAN=/opt/cmdstan
+RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/tmp', cores = 2, overwrite = TRUE)" && mv /tmp/cmdstan-* /opt/cmdstan
+
+# Set the CMDSTAN environment variable so cmdstanr can find the installation.
+# This avoids having to run set_cmdstan_path() in every R session.
+ENV CMDSTAN /opt/cmdstan
 
 # Faster installs, no vignettes/manuals
 RUN echo 'options(Ncpus = max(1L, parallel::detectCores()));' >> /usr/local/lib/R/etc/Rprofile.site
