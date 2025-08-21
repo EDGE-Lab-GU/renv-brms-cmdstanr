@@ -23,7 +23,11 @@ RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/tmp', cores = 2, overwrite = T
 # This avoids having to run set_cmdstan_path() in every R session.
 ENV CMDSTAN /opt/cmdstan
 
-# Faster installs, no vignettes/manuals
+# Fix rlang compile error (disable Werror for format-security) 
+RUN printf 'CFLAGS += -Wno-error=format-security\nCXXFLAGS += -Wno-error=format-security\n' \
+    > /usr/local/lib/R/etc/Makevars.site
+
+# Avoid vignette/manual compiles and use all cores
 RUN echo 'options(Ncpus = max(1L, parallel::detectCores()));' >> /usr/local/lib/R/etc/Rprofile.site
 ENV R_INSTALL_OPTS="--no-build-vignettes --no-manual"
 
