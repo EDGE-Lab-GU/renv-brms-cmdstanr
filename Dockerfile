@@ -30,8 +30,9 @@ RUN echo 'options(Ncpus = max(1L, parallel::detectCores()));' >> /usr/local/lib/
 ENV R_INSTALL_OPTS="--no-build-vignettes --no-manual"
 
 # This ensures renv finds them already present and skips source compiles.
-RUN R -q -e "options(repos=c(CRAN=Sys.getenv('RSPM')));" \
-         -e "install.packages(c('rlang','vctrs','cli','glue','cpp11','colorspace','isoband','farver','gtable'), type='binary')"
+ENV R_PKG_TYPE=binary
+RUN R -q -e "options(repos=c(CRAN=Sys.getenv('RSPM')), pkgType='binary'); \
+             install.packages(c('rlang','vctrs','cli','glue','cpp11','colorspace','isoband','farver','gtable'))"
 
 
 # So if any package (rlang) falls back to source, it won't die on -Werror=format-security
@@ -42,8 +43,8 @@ RUN sed -i 's/-Werror=format-security/-Wno-error=format-security/g' /usr/local/l
 # Project + renv restore (will respect CRAN repo above)
 WORKDIR /home/rstudio/project
 COPY . .
-RUN R -q -e "options(repos=c(CRAN=Sys.getenv('RSPM')));" \
-         -e "renv::restore(clean=TRUE, prompt=FALSE)" \
-         -e "renv::restore(clean=TRUE, prompt=FALSE)"
+RUN R -q -e "options(repos=c(CRAN=Sys.getenv('RSPM')), pkgType='binary'); \
+             Sys.setenv(RENV_CONFIG_INSTALL_PACKAGE_TYPE='binary'); \
+             renv::restore(clean=TRUE, prompt=FALSE)"
 
 EXPOSE 8787
