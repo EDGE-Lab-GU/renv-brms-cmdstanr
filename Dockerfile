@@ -29,6 +29,11 @@ ENV RENV_CONFIG_INSTALL_PACKAGE_TYPE=binary
 RUN echo 'options(Ncpus = max(1L, parallel::detectCores()));' >> /usr/local/lib/R/etc/Rprofile.site
 ENV R_INSTALL_OPTS="--no-build-vignettes --no-manual"
 
+# This ensures renv finds them already present and skips source compiles.
+RUN R -q -e "options(repos=c(CRAN=Sys.getenv('RSPM')));" \
+         -e "install.packages(c('rlang','vctrs','cli','glue','cpp11','colorspace','isoband','farver','gtable'), type='binary')"
+
+
 # So if any package (rlang) falls back to source, it won't die on -Werror=format-security
 RUN sed -i 's/-Werror=format-security/-Wno-error=format-security/g' /usr/local/lib/R/etc/Makeconf \
  && printf 'CFLAGS += -Wno-error=format-security\nCXXFLAGS += -Wno-error=format-security\n' \
