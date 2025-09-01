@@ -37,8 +37,8 @@ WORKDIR /home/rstudio/project
 # Copy lockfile first
 COPY renv.lock ./
 
-# Faster restore via binary mirror
-RUN --mount=type=cache,target=/opt/renv/cache \
+# Restore using persistent BuildKit cache
+RUN --mount=type=cache,id=renv-cache,target=/opt/renv/cache \
     Rscript -e "renv::restore(lockfile = 'renv.lock', clean = TRUE)"
 
 # Copy rest of project
