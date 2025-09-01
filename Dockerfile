@@ -1,51 +1,41 @@
-FROM rocker/rstudio:4.4.1
+FROM rocker/rstudio:4.3.1
+# Install system dependencies for your R packages
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    sudo git curl wget build-essential \
+    libssl-dev libcurl4-openssl-dev libxml2-dev \
+    libgit2-dev libharfbuzz-dev libfribidi-dev \
+    libfontconfig1-dev libfreetype6-dev \
+    libpng-dev libtiff5-dev libjpeg-dev \
+    libx11-dev pandoc \
+    cmake make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV RSPM=https://packagemanager.posit.co/cran/__linux__/jammy/latest
-ENV MAKEFLAGS="-j4" R_REMOTES_NO_ERRORS_FROM_WARNINGS=true
+# Install renv globally so it's available before restore
+RUN Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
+# Install cmdstanr from Stan repo
+RUN Rscript -e "install.packages('cmdstanr', repos=c('https://mc-stan.org/r-packages/', getOption('repos')))"
 
-# Base toolchain + prereqs for add-apt-repository
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gfortran make cmake \
-    libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
-    ca-certificates wget unzip \
-    software-properties-common dirmngr gnupg \
- && rm -rf /var/lib/apt/lists/*
+# Pre-install CmdStan to avoid compilation delays
+RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/tmp', cores = 2, overwrite = TRUE)" && mv /tmp/cmdstan-* /opt/cmdstan
 
-# Add CRAN PPAs and install heavy packages as Ubuntu binaries
-RUN add-apt-repository -y ppa:marutter/rrutter4.0 \
- && add-apt-repository -y ppa:c2d4u.team/c2d4u4.0+ \
- && apt-get update && apt-get install -y --no-install-recommends \
-      r-cran-rlang r-cran-vctrs r-cran-cli r-cran-glue r-cran-cpp11 \
-      r-cran-colorspace r-cran-isoband r-cran-farver r-cran-gtable \
- && rm -rf /var/lib/apt/lists/*
+# Set the CMDSTAN environment variable so cmdstanr can find the installation.
+# This avoids having to run set_cmdstan_path() in every R session.
+ENV CMDSTAN /opt/cmdstan
 
-# Install cmdstanr (from stan-dev R-universe) and renv
-RUN R -q -e "options(repos = c(stan='https://stan-dev.r-universe.dev', CRAN=Sys.getenv('RSPM')));" \
-         -e "install.packages(c('cmdstanr','renv'))"
-
-# Keep your CmdStan install exactly as-is
-RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/tmp', cores = 2, overwrite = TRUE)" \
- && mv /tmp/cmdstan-* /opt/cmdstan
-ENV CMDSTAN=/opt/cmdstan
-
-# Prefer binaries during renv restore
-ENV RENV_CONFIG_INSTALL_PACKAGE_TYPE=binary
-
-# Speed knobs + skip vignettes/manuals for any source fallbacks
-RUN echo 'options(Ncpus = max(1L, parallel::detectCores()));' >> /usr/local/lib/R/etc/Rprofile.site
-ENV R_INSTALL_OPTS="--no-build-vignettes --no-manual"
-
-# Safety: if anything still compiles from source, don't die on rlang's format-security warnings
-RUN sed -i 's/-Werror=format-security/-Wno-error=format-security/g' /usr/local/lib/R/etc/Makeconf \
- && printf 'CFLAGS += -Wno-error=format-security\nCXXFLAGS += -Wno-error=format-security\n' \
-    > /usr/local/lib/R/etc/Makevars.site
-
-# Project + renv restore
+# Default working directory
 WORKDIR /home/rstudio/project
-COPY . .
-RUN R -q -e "options(repos=c(CRAN=Sys.getenv('RSPM')));" \
-         -e "Sys.setenv(RENV_CONFIG_INSTALL_PACKAGE_TYPE='binary')" \
-         -e "renv::restore(clean=TRUE, prompt=FALSE)"
 
-EXPOSE 8787
+# Copy renv lockfile to restore packages.
+# This leverages Docker's layer caching, so packages are not reinstalled
+# on every build unless renv.lock changes.
+COPY renv.lock .
+
+# Restore the R environment
+RUN Rscript -e "renv::restore()"
+
+# Copy the rest of your project files
+COPY . .
+
+# Change ownership to the rstudio user
+RUN chown -R rstudio:rstudio /home/rstudio/project
