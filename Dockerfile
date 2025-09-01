@@ -2,20 +2,20 @@ FROM rocker/r-ver:4.3.1
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
-ENV MAKEFLAGS="-j4"
+ENV MAKEFLAGS="-j2"
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sudo git curl wget ca-certificates \
+    git curl wget ca-certificates \
     build-essential cmake make g++ pandoc \
     libssl-dev libcurl4-openssl-dev libxml2-dev libgit2-dev \
     libharfbuzz-dev libfribidi-dev \
     libfontconfig1-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
     libx11-dev \
-    && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
 
 # Optional: use binaries for CRAN packages during renv::restore()
-RUN Rscript -e "install.packages('bspm', repos='https://cloud.r-project.org'); bspm::enable(); options(bspm.version.check=FALSE)"
+RUN Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
 
 # ---- CmdStanR + CmdStan (your flow, with pin + parallel) ----
 RUN Rscript -e "install.packages('cmdstanr', repos=c('https://mc-stan.org/r-packages/', getOption('repos')))"
