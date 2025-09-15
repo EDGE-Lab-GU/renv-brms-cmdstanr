@@ -40,13 +40,19 @@ RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', cores = 2, overw
 # Set the CMDSTAN environment variable
 ENV CMDSTAN=/opt/cmdstan
 
-# Switch to the rstudio user for subsequent commands and application runtime
-USER rstudio
-
-# Set the working directory
+# Default working directory
 WORKDIR /home/rstudio/project
-# Copy your R project files into the container, ensuring correct ownership
-COPY --chown=rstudio:rstudio . /home/rstudio/project
 
-# Optional: Set permissions on the working directory
+# Copy renv lockfile to restore packages.
+# This leverages Docker's layer caching, so packages are not reinstalled
+# on every build unless renv.lock changes.
+COPY renv.lock .
+
+# Restore the R environment
+RUN Rscript -e "renv::restore()"
+
+# Copy the rest of your project files
+COPY . .
+
+# Change ownership to the rstudio user
 RUN chown -R rstudio:rstudio /home/rstudio/project
