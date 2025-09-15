@@ -2,6 +2,7 @@
 FROM rocker/r-ver:4.3.1
 
 # Install system dependencies as root.
+# Added libglpk-dev to resolve igraph's dependency
 RUN apt-get update -qq && apt-get install -y \
     g++ \
     libcurl4-gnutls-dev \
@@ -14,6 +15,7 @@ RUN apt-get update -qq && apt-get install -y \
     zlib1g-dev \
     git \
     make \
+    libglpk-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install renv first, as it's required for the next step.
@@ -46,4 +48,5 @@ COPY --chown=rstudio:rstudio . /home/rstudio/project
 
 # Optional: Set permissions on the working directory
 RUN chown -R rstudio:rstudio /home/rstudio/project
+
 
