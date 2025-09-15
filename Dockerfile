@@ -45,7 +45,6 @@ USER rstudio
 
 # Set the working directory
 WORKDIR /home/rstudio/project
-
 # Copy your R project files into the container, ensuring correct ownership
 COPY --chown=rstudio:rstudio . /home/rstudio/project
 
