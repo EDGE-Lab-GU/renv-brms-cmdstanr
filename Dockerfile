@@ -43,16 +43,5 @@ ENV CMDSTAN=/opt/cmdstan
 # Default working directory
 WORKDIR /home/rstudio/project
 
-# Copy renv lockfile to restore packages.
-# This leverages Docker's layer caching, so packages are not reinstalled
-# on every build unless renv.lock changes.
-COPY renv.lock .
-
-# Restore the R environment
-RUN Rscript -e "renv::restore()"
-
-# Copy the rest of your project files
-COPY . .
-
-# Change ownership to the rstudio user
-RUN chown -R rstudio:rstudio /home/rstudio/project
+# Copy your R project files into the container.
+COPY --chown=rstudio:rstudio . /home/rstudio/project
