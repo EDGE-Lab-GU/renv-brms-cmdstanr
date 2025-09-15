@@ -31,6 +31,9 @@ RUN R -e "install.packages('rstanarm')"
 # Install cmdstanr from the Stan R-universe repository
 RUN R -e "install.packages('cmdstanr', repos = c('https://mc-stan.org/r-packages/', getOption('repos')))"
 
+# Create the directory for CmdStan installation as root
+RUN mkdir -p /opt/cmdstan
+
 # Pre-install CmdStan
 RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', cores = 2, overwrite = TRUE)"
 
@@ -48,5 +51,3 @@ COPY --chown=rstudio:rstudio . /home/rstudio/project
 
 # Optional: Set permissions on the working directory
 RUN chown -R rstudio:rstudio /home/rstudio/project
-
-
