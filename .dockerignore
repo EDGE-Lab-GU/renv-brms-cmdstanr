@@ -8,7 +8,7 @@ renv/
 .Rproj.user/
 .Rhistory
 .RData
-
+rsconnect/
 # Ignore large data files that aren't needed at build time
 # For example, if you download data from a web source in your script, don't include it here.
 data/
