@@ -17,11 +17,13 @@ RUN apt-get update -qq && apt-get install -y \
     make \
     && rm -rf /var/lib/apt/lists/*
 
-# Install R packages as root
-RUN R -e "install.packages('renv')"
-RUN R -e "renv::install(c('tidyverse', 'arrow', 'brms', 'Rcpp', 'rstan', 'rstanarm', 'cmdstanr'))"
+# Install R packages from CRAN
+RUN R -e "renv::install(c('tidyverse', 'arrow', 'brms', 'Rcpp', 'rstan', 'rstanarm'))"
 
-# Pre-install CmdStan as root
+# Install cmdstanr from the Stan R-universe repository
+RUN R -e "install.packages('cmdstanr', repos = c('https://mc-stan.org/r-packages/', getOption('repos')))"
+
+# Pre-install CmdStan
 RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', cores = 2, overwrite = TRUE)"
 
 # Set the CMDSTAN environment variable
