@@ -1,0 +1,18 @@
+# Ignore the renv cache
+renv/
+
+# Ignore the local CmdStan installation
+.cmdstan/
+
+# Ignore common R temporary files
+.Rproj.user/
+.Rhistory
+.RData
+
+# Ignore large data files that aren't needed at build time
+# For example, if you download data from a web source in your script, don't include it here.
+data/
+
+# Ignore any other large, non-essential files
+*.zip
+*.tar.gz
