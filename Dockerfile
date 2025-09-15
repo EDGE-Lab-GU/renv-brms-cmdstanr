@@ -1,14 +1,8 @@
 # Use a base image with R pre-installed
 FROM rocker/r-ver:4.3.1
 
-# Set a non-root user for security best practices
-RUN useradd -m shiny && \
-    mkdir /opt/cmdstan && \
-    chown -R shiny:shiny /opt/cmdstan
-
-USER shiny
-
-# Install system dependencies
+# Install system dependencies as root.
+# This must be done before switching to a non-root user.
 RUN apt-get update -qq && apt-get install -y \
     g++ \
     libcurl4-gnutls-dev \
@@ -23,31 +17,26 @@ RUN apt-get update -qq && apt-get install -y \
     make \
     && rm -rf /var/lib/apt/lists/*
 
-# Install R packages
+# Install R packages as root
 RUN R -e "install.packages('renv')"
 RUN R -e "renv::install(c('tidyverse', 'arrow', 'brms', 'Rcpp', 'rstan', 'rstanarm', 'cmdstanr'))"
 
-# Pre-install CmdStan
-# This step significantly speeds up model compilation later
+# Pre-install CmdStan as root
 RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', cores = 2, overwrite = TRUE)"
 
 # Set the CMDSTAN environment variable
-# This ensures cmdstanr can always find the installation
 ENV CMDSTAN=/opt/cmdstan
 
-# Default working directory
+# Switch to the rstudio user for subsequent commands and application runtime
+# The base image `rocker/r-ver` already creates this user.
+USER rstudio
+
+# Set the working directory
 WORKDIR /home/rstudio/project
 
-# Copy renv lockfile to restore packages.
-# This leverages Docker's layer caching, so packages are not reinstalled
-# on every build unless renv.lock changes.
-COPY renv.lock .
+# Copy your R project files into the container, ensuring correct ownership
+# The --chown flag ensures that the files are owned by the rstudio user
+COPY --chown=rstudio:rstudio . /home/rstudio/project
 
-# Restore the R environment
-RUN Rscript -e "renv::restore()"
-
-# Copy the rest of your project files
-COPY . .
-
-# Change ownership to the rstudio user
+# Optional: Set permissions on the working directory
 RUN chown -R rstudio:rstudio /home/rstudio/project
