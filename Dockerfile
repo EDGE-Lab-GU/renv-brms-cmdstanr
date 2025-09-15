@@ -1,16 +1,16 @@
-# Use the official RStudio Server image from the Rocker project
-FROM rocker/rstudio
+# Build from the official Rocker RStudio image
+FROM rocker/rstudio:latest
 
-# Set the working directory for your project
-WORKDIR /home/rstudio/project
 
-# Copy your R project files into the container.
-# The --chown flag ensures the files are owned by the `rstudio` user.
-# This is the single most important fix for your issue.
-COPY --chown=rstudio:rstudio . /home/rstudio/project
+# Optional: install extra system deps / R packages here
+# RUN apt-get update && apt-get install -y libpq-dev && rm -rf /var/lib/apt/lists/*
+# RUN R -q -e 'install.packages(c("tidyverse","data.table"), repos="https://cloud.r-project.org")'
 
-# Optional: Install any additional R packages your project needs
-# You can also use renv::restore() here if you have a renv.lock file
-# RUN R -e "install.packages(c('brms', 'rstanarm'))"
 
-# No need to specify CMD, as the base image has a 
+# Add our startup wrapper to bind RStudio Server to Railway's $PORT
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
+
+# Use our wrapper; it will hand control back to Rocker’s s6 init (/init)
+ENTRYPOINT ["/usr/local/bin/start.sh"]
