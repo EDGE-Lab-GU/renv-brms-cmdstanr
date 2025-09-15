@@ -16,7 +16,7 @@ RUN apt-get update -qq && apt-get install -y \
     git \
     make \
     libglpk-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install renv first, as it's required for the next step.
 RUN R -e "install.packages('renv')"
