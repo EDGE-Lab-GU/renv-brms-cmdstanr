@@ -1,40 +1,28 @@
+# Use a base image with R pre-installed. The rocker images are a great choice.
 FROM rocker/r-ver:4.3.1
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=UTC
-ENV MAKEFLAGS="-j2"
+# Install system dependencies required for R packages.
+# These include dependencies for Stan and brms compilation (g++, libcurl, etc.)
+RUN apt-get update -qq && apt-get install -y \
+    g++ \
+    libcurl4-gnutls-dev \
+    libxml2-dev \
+    libssl-dev \
+    libudunits2-dev \
+    libgdal-dev \
+    pandoc \
+    pandoc-citeproc \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# System deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl wget ca-certificates \
-    build-essential cmake make g++ pandoc \
-    libssl-dev libcurl4-openssl-dev libxml2-dev libgit2-dev \
-    libharfbuzz-dev libfribidi-dev \
-    libfontconfig1-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
-    libx11-dev \
- && rm -rf /var/lib/apt/lists/*
+# Install R packages.
+# The `install2.r` script from the littler package is a convenient way to install packages.
+# We'll install a bunch of tidyverse packages, brms, Stan, and arrow for parquet.
+RUN R -e "install.packages('renv')"
+RUN R -e "renv::install(c('tidyverse', 'arrow', 'brms', 'Rcpp', 'rstan', 'rstanarm'))"
 
-# Optional: use binaries for CRAN packages during renv::restore()
-RUN Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
+# Set the working directory inside the container
+WORKDIR /app
 
-# ---- CmdStanR + CmdStan (your flow, with pin + parallel) ----
-RUN Rscript -e "install.packages('cmdstanr', repos=c('https://mc-stan.org/r-packages/', getOption('repos')))"
-
-ARG CMDSTAN_VERSION=2.35.0
-ENV CMDSTAN=/opt/cmdstan
-RUN Rscript -e "cmdstanr::install_cmdstan(dir = '/tmp', \
-                                         version = Sys.getenv('CMDSTAN_VERSION', unset = NA), \
-                                         cores = as.integer(Sys.getenv('MAKEFLAGS','-j2') |> sub('^-j','')), \
-                                         overwrite = TRUE, \
-                                         quiet = TRUE)" \
- && mv /tmp/cmdstan-* /opt/cmdstan
-
-# Project setup
-WORKDIR /home/rstudio/project
-COPY renv.lock ./
-ENV RENV_CONFIG_PAK_ENABLED=false
-RUN Rscript -e "options(repos=c(CRAN='https://cloud.r-project.org')); renv::restore()"
-
-COPY . .
-RUN chown -R rstudio:rstudio /home/rstudio/project || true
-
+# Copy your R project files into the container.
+COPY . /app
